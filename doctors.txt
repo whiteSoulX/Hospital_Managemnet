@@ -1,0 +1,7 @@
+Tania Ahmed,Dentist
+Maruf Rahman,Heart Specialist
+Tahsin Abdullah,Cardiology
+Farabi Hossain,Physician
+Mahira,Psychiatrist
+Hasan Imam,Physician
+Hamid Khan,Dermatology
