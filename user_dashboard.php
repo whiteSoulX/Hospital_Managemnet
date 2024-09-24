@@ -1,36 +1,47 @@
 <?php
 session_start();
 
+
 if (!isset($_SESSION["username"])) {
     header("Location: login.php");
     exit;
 }
 
-function getBookedAppointments() {
-    $appointmentsFile = 'appointments.txt';
-    $userAppointments = [];
-    if (file_exists($appointmentsFile)) {
-        $appointments = file($appointmentsFile, FILE_IGNORE_NEW_LINES);
-        foreach ($appointments as $appointment) {
-            $data = explode(",", $appointment);
-            if ($data[0] === $_SESSION["username"]) {
-                $userAppointments[] = [
-                    'doctor' => $data[1],
-                    'date' => $data[2],
-                    'time' => $data[3]
-                ];
-            }
+
+include 'db_connect.php';
+
+function getBookedAppointments($conn, $username)
+{
+    $appointments = [];
+    $sql = "SELECT doctor_name, appointment_date, appointment_time FROM appointments WHERE username = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $appointments[] = [
+                'doctor' => $row['doctor_name'],
+                'date' => $row['appointment_date'],
+                'time' => $row['appointment_time']
+            ];
         }
     }
-    return $userAppointments;
+    return $appointments;
 }
 
+
 $username = $_SESSION["username"];
-$userAppointments = getBookedAppointments();
+$userAppointments = getBookedAppointments($conn, $username);
+
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,23 +53,26 @@ $userAppointments = getBookedAppointments();
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s;
         }
+
         .appointment-card:hover {
             transform: translateY(-5px);
         }
+
         .card-body h5 {
             font-weight: bold;
         }
     </style>
 </head>
+
 <body>
     <div class="container mt-5">
         <h2>User Dashboard</h2>
         <p>Welcome, <?php echo $username; ?>!</p>
-        
-        <?php if (!empty($userAppointments)): ?>
+
+        <?php if (!empty($userAppointments)) { ?>
             <h4>Your Appointments:</h4>
             <div class="row">
-                <?php foreach ($userAppointments as $appointment): ?>
+                <?php foreach ($userAppointments as $appointment) { ?>
                     <div class="col-md-4 mb-4">
                         <div class="card appointment-card">
                             <div class="card-body">
@@ -67,25 +81,28 @@ $userAppointments = getBookedAppointments();
                                     <strong>Date:</strong> <?php echo $appointment['date']; ?><br>
                                     <strong>Time:</strong> <?php echo $appointment['time']; ?>
                                 </p>
-                                <a href="#" class="btn btn-primary">View Details</a>
+                                <a href="doctor_details.php?doctor=<?php echo urlencode($appointment['doctor']); ?>" class="btn btn-primary">View Details</a>
+
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
+                <?php } ?>
             </div>
-        <?php else: ?>
-            <div class="alert alert-warning" role="alert">
-                You don't have any appointments booked.
+        <?php } else { ?>
+            <div style="opacity: 1;" class="alert alert-warning" role="alert">
+                You don't have any appointments
+                <a class="btn-primary btn-lg btn" href="./book_appointment.php">Book Appointment</a>
             </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <a href="index.php" class="btn btn-primary">Home</a>
         <a href="logout.php" class="btn btn-danger">Logout</a>
     </div>
 
-    <!-- Bootstrap JS and dependencies -->
+    
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
+
 </html>
