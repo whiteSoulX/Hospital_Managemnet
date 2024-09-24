@@ -1,24 +1,31 @@
 <?php
 session_start();
+include "db_connect.php";
 
-$userDataFile = 'admins.txt';
-
-function registerAdmin($username, $email, $password) {
-    global $userDataFile;
-    $userData = fopen($userDataFile, 'a');
-    fwrite($userData, "$username,$email,$password,admin\n");
-    fclose($userData);
-    $_SESSION["username"] = $username;
-    $_SESSION["role"] = "admin";
-    header("Location: admin_dashboard.php");
-    exit;
+function registerUser($username, $email, $password) {
+    global $conn;
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = $conn->prepare("INSERT INTO admin (username, email, password) VALUES (?, ?, ?)");
+    $stmt->bind_param("sss", $username, $email, $hashed_password);
+    if ($stmt->execute()) {
+        echo "Admin registered successfully!";
+    } else {
+        echo "Error: " . $stmt->error;
+    }
+    $stmt->close();
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST["username"];
     $email = $_POST["email"];
     $password = $_POST["password"];
-    registerAdmin($username, $email, $password);
+
+    
+    if (!empty($username) && !empty($email) && !empty($password)) {
+        registerUser($username, $email, $password);
+    } else {
+        echo "All fields are required!";
+    }
 }
 ?>
 
@@ -28,9 +35,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Sign Up</title>
-    <!-- Bootstrap CSS -->
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
@@ -50,6 +57,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
+<div class="container">
+        <div class="top-right">
+            <a href="user_dashboard.php" class="dash-btn">
+                <button type="button" class="btn btn-success">Log in</button>
+            </a>
+
+            <a href="index.php" class="dash-btn">
+                <button type="button" class="btn btn-warning">Home</button>
+            </a>
+        </div>
     <div class="container d-flex justify-content-center align-items-center min-vh-100">
         <div class="col-md-6">
             <div class="card p-4">
@@ -87,11 +104,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
-    <!-- Bootstrap JS and Popper.js -->
+    
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js"></script>
     <script>
-        // Bootstrap form validation
+        
         (function () {
             'use strict'
 
