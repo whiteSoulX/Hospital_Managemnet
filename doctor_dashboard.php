@@ -1,31 +1,64 @@
 <?php
 session_start();
 
+
 if (!isset($_SESSION["username"])) {
     header("Location: login.php");
     exit;
 }
 
+
+include 'db_connect.php';
+
+
 $username = $_SESSION["username"];
 
-function hasAppointments($doctorName) {
-    $appointmentsFile = 'appointments.txt';
-    if (file_exists($appointmentsFile)) {
-        $appointments = file($appointmentsFile, FILE_IGNORE_NEW_LINES);
-        foreach ($appointments as $appointment) {
-            $data = explode(",", $appointment);
 
-            if (stripos($data[1], $doctorName) !== false) {
-                return true;
-            }
-        }
+function getDoctorDetails($conn, $username) {
+    $sql = "SELECT username FROM doctors WHERE username = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($result->num_rows > 0) {
+        return $result->fetch_assoc();  
+    } else {
+        return null;
     }
-    return false;
 }
 
-$doctorName = $username;
+$doctorDetails = getDoctorDetails($conn, $username);
 
-$hasAppointments = hasAppointments($doctorName);
+
+if ($doctorDetails) {
+    $doctorName = $doctorDetails['username']; 
+    
+    function getDoctorAppointments($conn, $doctorName) {
+        $appointments = [];
+        $sql = "SELECT username, appointment_date, appointment_time FROM appointments WHERE doctor_name = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $doctorName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $appointments[] = $row;
+            }
+        }
+        return $appointments;
+    }
+
+    $appointments = getDoctorAppointments($conn, $doctorName);
+} else {
+   
+    echo "Doctor not found!";
+    exit;
+}
+
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -35,35 +68,35 @@ $hasAppointments = hasAppointments($doctorName);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor Dashboard</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/doctor_dash.css"> 
 </head>
 <body>
     <div class="container mt-5">
         <div class="jumbotron">
-            <h1 class="display-4">Welcome, Dr. <?php echo $doctorName; ?></h1>
+            <h1 class="display-4">Welcome, Dr. <?php echo htmlspecialchars($doctorName); ?></h1>
             <p class="lead">This is your doctor dashboard.</p>
             <hr class="my-4">
-            <p>You can navigate to other sections of the website from here.</p>
-            <a class="btn btn-primary" href="index.php" role="button">Home</a>
+           
+            <a class="btn btn-success" href="index.php" role="button">Home</a>
+            <a class="btn btn-primary" href="doctorprofile.php" role="button">Profile</a>
             <a class="btn btn-danger" href="logout.php" role="button">Logout</a>
         </div>
 
-        <?php if ($hasAppointments): ?>
+        
+        <?php if (!empty($appointments)): ?>
         <div class="alert alert-info" role="alert">
             <h4 class="alert-heading">You have appointments!</h4>
             <hr>
             <ul>
-                <?php
-                $appointmentsFile = 'appointments.txt';
-                $appointments = file($appointmentsFile, FILE_IGNORE_NEW_LINES);
-                foreach ($appointments as $appointment) {
-                    $data = explode(",", $appointment);
-                    // Check if the doctor's name appears in the appointment data
-                    if (stripos($data[1], $doctorName) !== false) {
-                        echo "<li>{$data[0]} has an appointment booked with you at {$data[2]} on {$data[3]}</li>";
-                    }
-                }
-                ?>
+                <?php foreach ($appointments as $appointment): ?>
+                    <li><?php echo htmlspecialchars($appointment['username']); ?> has an appointment booked with you at <?php echo htmlspecialchars($appointment['appointment_time']); ?> on <?php echo htmlspecialchars($appointment['appointment_date']); ?></li>
+                <?php endforeach; ?>
             </ul>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">No appointments!</h4>
+            <p>You currently have no appointments.</p>
         </div>
         <?php endif; ?>
     </div>
