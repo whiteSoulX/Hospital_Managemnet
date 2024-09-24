@@ -1,28 +1,33 @@
 <?php
 session_start();
 
+
 if (!isset($_SESSION["username"])) {
     header("Location: login.php");
     exit;
 }
 
-function getDoctorList() {
-    $doctorsFile = 'doctors.txt';
+
+include 'db_connect.php';
+
+function getDoctorList($conn) {
     $doctors = [];
-    if (file_exists($doctorsFile)) {
-        $lines = file($doctorsFile, FILE_IGNORE_NEW_LINES);
-        foreach ($lines as $line) {
-            $data = explode(",", $line);
-            $doctors[] = ['name' => $data[0], 'field' => $data[1]];
+    $sql = "SELECT username, specialization FROM doctors";
+    $result = $conn->query($sql);
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $doctors[] = ['name' => $row['username'], 'field' => $row['specialization']];
         }
     }
     return $doctors;
 }
 
-function saveAppointment($username, $doctorName, $date, $time) {
-    $appointmentsFile = 'appointments.txt';
-    $appointmentData = "$username,$doctorName,$date,$time\n";
-    file_put_contents($appointmentsFile, $appointmentData, FILE_APPEND | LOCK_EX);
+function saveAppointment($conn, $username, $doctorName, $date, $time) {
+    $sql = "INSERT INTO appointments (username, doctor_name, appointment_date, appointment_time) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssss", $username, $doctorName, $date, $time);
+    $stmt->execute();
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -30,12 +35,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $date = $_POST["date"];
     $time = $_POST["time"];
     $username = $_SESSION["username"];
-    saveAppointment($username, $selectedDoctor, $date, $time);
+    saveAppointment($conn, $username, $selectedDoctor, $date, $time);
     header("Location: user_dashboard.php");
     exit;
 }
 
-$doctorList = getDoctorList();
+$doctorList = getDoctorList($conn);
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -45,38 +51,20 @@ $doctorList = getDoctorList();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Appointment</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .container {
-            margin-top: 50px;
-            max-width: 600px;
-        }
-        .form-control {
-            border-radius: 30px;
-        }
-        .btn-primary {
-            border-radius: 30px;
-        }
-        .card {
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .form-group label {
-            font-weight: bold;
-        }
-        .input-group-text {
-            background-color: #007bff;
-            color: white;
-        }
-    </style>
+    <link rel="stylesheet" href="appointment.css"> 
 </head>
 <body>
     <div class="container">
+        <div class="nav-buttons">
+            <a href="index.php" class="btn btn-info btn-home"><i class="fas fa-home"></i> Home</a>
+            <?php if (isset($_SESSION['username'])) { ?>
+            <a href="<?php echo ($_SESSION['role'] == 'user') ? 'user_dashboard.php' : (($_SESSION['role'] == 'doctor') ? 'doctor_dashboard.php' : 'admin_dashboard.php'); ?>" class="btn btn-warning">
+                Dashboard
+            </a>
+            <?php } ?>
+        </div>
+
         <div class="card">
             <h2 class="text-center">Book an Appointment</h2>
             <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
@@ -85,61 +73,37 @@ $doctorList = getDoctorList();
                     <select class="form-control" id="doctor" name="doctor" required>
                         <option value="" disabled selected>Select Doctor</option>
                         <?php foreach ($doctorList as $doctor) : ?>
-                            <option value="<?php echo $doctor['name']; ?>"><?php echo $doctor['name'] . ' - ' . $doctor['field']; ?></option>
+                            <option value="<?php echo $doctor['name']; ?>">
+                                <?php echo $doctor['name'] . ' - ' . $doctor['field']; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="invalid-feedback">Please select a doctor.</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="date">Date:</label>
                     <div class="input-group">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                        </div>
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
                         <input type="date" class="form-control" id="date" name="date" required>
                     </div>
-                    <div class="invalid-feedback">Please choose a valid date.</div>
                 </div>
 
                 <div class="form-group">
                     <label for="time">Time:</label>
                     <div class="input-group">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
-                        </div>
+                        <span class="input-group-text"><i class="fas fa-clock"></i></span>
                         <input type="time" class="form-control" id="time" name="time" required>
                     </div>
-                    <div class="invalid-feedback">Please choose a valid time.</div>
                 </div>
                 
-                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-check"></i> Book Appointment</button>
+                <button type="submit" class="btn btn-primary btn-block mt-4">
+                    <i class="fas fa-check"></i> Book Appointment
+                </button>
             </form>
         </div>
     </div>
 
-    <!-- JQuery, Bootstrap JS, and Font Awesome -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-    <!-- Custom script for form validation -->
-    <script>
-        (function() {
-            'use strict';
-            window.addEventListener('load', function() {
-                var forms = document.getElementsByClassName('needs-validation');
-                Array.prototype.filter.call(forms, function(form) {
-                    form.addEventListener('submit', function(event) {
-                        if (form.checkValidity() === false) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
-                        form.classList.add('was-validated');
-                    }, false);
-                });
-            }, false);
-        })();
-    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
