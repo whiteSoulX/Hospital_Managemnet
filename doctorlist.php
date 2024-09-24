@@ -1,54 +1,29 @@
 <?php
 session_start();
+include "db_connect.php"; 
 
 function getDoctorsList() {
-    $doctorsFile = 'doctors.txt';
-    $ratingsFile = 'ratings.txt';
+    global $conn;
     $doctors = [];
 
-    if (file_exists($doctorsFile)) {
-        $lines = file($doctorsFile, FILE_IGNORE_NEW_LINES);
-        foreach ($lines as $line) {
-            $data = explode(",", $line);
+    
+    $sql = "SELECT username, specialization FROM doctors"; 
+    $result = $conn->query($sql);
+
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
             $doctor = [
-                'name' => $data[0],
-                'field' => $data[1],
+                'name' => $row['username'], 
+                'field' => $row['specialization'], 
                 'rating' => 0,
                 'ratingCount' => 0
             ];
 
-            if (!array_key_exists($data[1], $doctors)) {
-                $doctors[$data[1]] = [];
+            if (!array_key_exists($row['specialization'], $doctors)) {
+                $doctors[$row['specialization']] = [];
             }
 
-            $doctors[$data[1]][] = $doctor;
-        }
-    }
-
-    if (file_exists($ratingsFile)) {
-        $lines = file($ratingsFile, FILE_IGNORE_NEW_LINES);
-        foreach ($lines as $line) {
-            $data = explode(",", $line);
-            $doctorName = $data[0];
-            $rating = (int)$data[2];
-
-            foreach ($doctors as &$field) {
-                foreach ($field as &$doctor) {
-                    if ($doctor['name'] === $doctorName) {
-                        $doctor['rating'] += $rating;
-                        $doctor['ratingCount']++;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    foreach ($doctors as &$field) {
-        foreach ($field as &$doctor) {
-            if ($doctor['ratingCount'] > 0) {
-                $doctor['rating'] = $doctor['rating'] / $doctor['ratingCount'];
-            }
+            $doctors[$row['specialization']][] = $doctor;
         }
     }
 
@@ -92,11 +67,11 @@ if (isset($_GET['department']) && !empty($_GET['department'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Doctor List</title>
-    <!-- Bootstrap CSS -->
+   
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <!-- Custom CSS -->
+ 
     <style>
         body {
             background-color: #f8f9fa;
@@ -112,6 +87,18 @@ if (isset($_GET['department']) && !empty($_GET['department'])) {
         }
         .btn-outline-primary, .btn-outline-success, .btn-outline-info {
             border-radius: 20px;
+            margin:10px 30px;
+            padding:10px 32px;
+        }
+        .nav{
+            border-radius: 20px;
+            content: 10px 20px;
+            padding:20px 50px;
+            font-size:20px;
+            margin:10px 20px;
+            
+            
+
         }
         h2, h3 {
             margin-bottom: 20px;
@@ -119,6 +106,12 @@ if (isset($_GET['department']) && !empty($_GET['department'])) {
     </style>
 </head>
 <body>
+<div class="nav">
+    <a href="index.php"> 
+        <button type="button" class="btn btn-warning">Home</button>
+    </a> 
+</div>
+
     <div class="container">
         <h2 class="text-center text-info">Our Doctors</h2>
         <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="GET" class="mb-3">
