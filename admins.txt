@@ -1,5 +1,0 @@
-adminlol,adminemail@gmail.com,adminlolpassword,admin
-admin2,admin2@gmail.com,admin2pass,admin
-admin3,admin3@gmail.com,admin3pass,admin
-admin4,admin4@gmail.com,admin4pass,admin
-admin5,admin5@gmail.com,adminpass,admin
