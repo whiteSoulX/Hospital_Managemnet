@@ -1,9 +1,0 @@
-Salvir Rahman Ratul,navidrahman96@gmail.com,ratulpass
-joha,jon@gmail.com,johapass
-Taskeen,taskeen@gmail.com,taskeenpass
-Sajid,sajid@gmail.com,sajidpass
-sabik,admin2@gmail.com,asdasdqwe
-admin,admin2@gmail.com,admin
-admin2,admin2@gmail.com,qwer
-sabik.anjum.cse@ulab.edu.bd,admin2@gmail.com,asdfadf
-admin,adminemail@gmail.com,ASDF
